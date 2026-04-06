@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, joinedload
 
-import backend.BD.BD_alchemy as models
+import app.models as models
 from app.services.crm import sync_booking_to_crm
 from app.services.request_guard import idempotency_store, rate_limiter
-from backend.BD.bd_connect import get_db
-from backend.schemes.pyschemes import BookingCreate, BookingResponse, BookingStatus
+from app.db import get_db
+from app.schemas import BookingCreate, BookingResponse, BookingStatus
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
@@ -46,7 +46,8 @@ def _sync_to_crm_and_log(db: Session, booking: models.Booking) -> models.Booking
             booking.status = models.BookingStatus.pending
     else:
         booking.crm_sync_status = "error"
-        booking.status = models.BookingStatus.crm_error
+        if booking.status == models.BookingStatus.new:
+            booking.status = models.BookingStatus.pending
 
     db.commit()
     db.refresh(booking)

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     db_port: int = 5432
     db_name: str = "camping_db"
     db_echo: bool = False
+    auto_create_tables: bool = False
 
     crm_webhook_url: str = ""
     crm_api_token: str = ""

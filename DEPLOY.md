@@ -17,5 +17,5 @@ docker compose up -d --build
 - Health: `http://<server-ip>/health`
 
 ## Notes
-- Nginx serves `aye.html` and proxies API endpoints to FastAPI container.
+- Nginx serves `frontend/index.html` and proxies API endpoints to FastAPI container.
 - PostgreSQL is expected to be external (managed), not part of compose.

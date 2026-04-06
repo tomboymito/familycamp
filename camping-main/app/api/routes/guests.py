@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-import backend.BD.BD_alchemy as models
-from backend.BD.bd_connect import get_db
-from backend.schemes.pyschemes import GuestDataCreate, GuestDataResponse
+import app.models as models
+from app.db import get_db
+from app.schemas import GuestDataCreate, GuestDataResponse
 
 router = APIRouter(prefix="/guests", tags=["Guests"])
 

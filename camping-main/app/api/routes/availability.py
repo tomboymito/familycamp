@@ -3,8 +3,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-import backend.BD.BD_alchemy as models
-from backend.BD.bd_connect import get_db
+import app.models as models
+from app.db import get_db
 
 router = APIRouter(prefix="/availability", tags=["Availability"])
 

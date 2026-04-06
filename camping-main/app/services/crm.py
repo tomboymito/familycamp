@@ -4,7 +4,7 @@ from datetime import datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-import backend.BD.BD_alchemy as models
+import app.models as models
 from app.core.config import settings
 
 
