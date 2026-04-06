@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FamilyCamp Admin</title>
+  <link rel="stylesheet" href="/assets/css/admin.css" />
+</head>
+<body>
+<main class="container">
+  <h1>Админ-панель FamilyCamp</h1>
+
+  <section id="loginSection" class="card">
+    <h2>Вход</h2>
+    <form id="loginForm" class="inline-form">
+      <input name="username" placeholder="Логин" required />
+      <input name="password" placeholder="Пароль" type="password" required />
+      <button type="submit">Войти</button>
+    </form>
+    <p id="loginStatus"></p>
+  </section>
+
+  <section id="workspace" class="hidden">
+    <div class="card">
+      <h2>Шахматка (14 дней)</h2>
+      <div class="inline-form">
+        <input id="gridFrom" type="date" />
+        <button id="loadGrid">Обновить</button>
+      </div>
+      <div id="grid" class="grid-board"></div>
+    </div>
+
+    <div class="card">
+      <h2>Список броней</h2>
+      <button id="loadBookings">Обновить список</button>
+      <div id="bookings"></div>
+    </div>
+
+    <div class="card">
+      <h2>Блокировка места</h2>
+      <form id="blockForm" class="inline-form wrap">
+        <input name="spot_id" type="number" min="1" placeholder="ID места" required />
+        <input name="date_from" type="date" required />
+        <input name="date_to" type="date" required />
+        <input name="reason" placeholder="Причина" />
+        <button type="submit">Заблокировать</button>
+      </form>
+      <p id="blockStatus"></p>
+    </div>
+  </section>
+</main>
+<script src="/assets/js/admin.js" defer></script>
+</body>
+</html>
