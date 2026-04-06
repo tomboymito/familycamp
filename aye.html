@@ -831,7 +831,7 @@
             margin-bottom: 1.5rem;
         }
 
-        .form-group input, .form-group textarea {
+        .form-group input, .form-group textarea, .form-group select {
             width: 100%;
             padding: 1rem;
             border: 1.5px solid rgba(214, 207, 191, 0.6);
@@ -844,7 +844,7 @@
             font-weight: 300;
         }
 
-        .form-group input:focus, .form-group textarea:focus {
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 2px rgba(44, 85, 48, 0.08);
@@ -1704,17 +1704,40 @@
             <h2>Контакты</h2>
             <div class="contact-form">
                 <div class="form-group">
-                    <input type="text" placeholder="Ваше имя" id="name">
+                    <input type="date" id="checkIn" required>
                 </div>
                 <div class="form-group">
-                    <input type="tel" placeholder="Ваш телефон" id="phone">
+                    <input type="date" id="checkOut" required>
                 </div>
                 <div class="form-group">
-                    <textarea placeholder="Ваше сообщение" id="message"></textarea>
+                    <select id="spotId" required>
+                        <option value="">Выберите площадку</option>
+                        <option value="1">Палаточное место</option>
+                        <option value="2">Семейный домик</option>
+                        <option value="3">Домик у озера</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <input type="number" placeholder="Количество гостей" id="guestsCount" min="1" max="20" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" placeholder="Ваше имя" id="name" required>
+                </div>
+                <div class="form-group">
+                    <input type="tel" placeholder="Ваш телефон" id="phone" required>
+                </div>
+                <div class="form-group">
+                    <input type="email" placeholder="Ваш email" id="email" required>
+                </div>
+                <div class="form-group" style="display:none;">
+                    <input type="text" id="website" autocomplete="off" tabindex="-1">
+                </div>
+                <div class="form-group">
+                    <textarea placeholder="Комментарий к бронированию" id="message"></textarea>
                 </div>
                 <button class="submit-btn" id="submitBtn">
                     <span class="btn-icon"></span>
-                    Отправить сообщение
+                    Отправить заявку
                 </button>
             </div>
         </div>
@@ -2177,15 +2200,10 @@
         function showBooking() {
             const contactsSection = document.getElementById('contacts');
             if (contactsSection) {
-                contactsSection.scrollIntoView({
-                    behavior: 'smooth'
-                });
-                
+                contactsSection.scrollIntoView({ behavior: 'smooth' });
                 setTimeout(() => {
-                    const nameField = document.getElementById('name');
-                    if (nameField) {
-                        nameField.focus();
-                    }
+                    const checkInField = document.getElementById('checkIn');
+                    if (checkInField) checkInField.focus();
                 }, 500);
             }
         }
@@ -2208,32 +2226,83 @@
             }
         }
 
-        function sendMessage() {
-            const name = document.getElementById('name')?.value.trim() || '';
-            const phone = document.getElementById('phone')?.value.trim() || '';
-            const message = document.getElementById('message')?.value.trim() || '';
+        async function sendMessage() {
+            const payload = {
+                check_in: document.getElementById('checkIn')?.value || '',
+                check_out: document.getElementById('checkOut')?.value || '',
+                spot_id: Number(document.getElementById('spotId')?.value || 0),
+                guests_count: Number(document.getElementById('guestsCount')?.value || 0),
+                customer_name: document.getElementById('name')?.value.trim() || '',
+                customer_phone: document.getElementById('phone')?.value.trim() || '',
+                customer_email: document.getElementById('email')?.value.trim() || '',
+                comment: document.getElementById('message')?.value.trim() || '',
+                website: document.getElementById('website')?.value || ''
+            };
 
-            if (validateForm(name, phone)) {
-                showNotification(`Спасибо, ${name}! Мы свяжемся с вами по номеру ${phone} в ближайшее время.`, 'success');
-                resetForm();
-            } else {
-                showNotification('Пожалуйста, заполните обязательные поля: имя и телефон.', 'error');
+            if (!validateForm(payload)) {
+                showNotification('Ошибка отправки формы: проверьте обязательные поля и формат телефона/email.', 'error');
+                return;
+            }
+
+            try {
+                const apiBaseUrl = window.API_BASE_URL || '';
+                const idempotencyKey = `book_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+                const response = await fetch(`${apiBaseUrl}/bookings`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Idempotency-Key': idempotencyKey
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                await response.json().catch(() => ({}));
+
+                if (response.ok) {
+                    showNotification('Бронь успешно отправлена.', 'success');
+                    resetForm();
+                    return;
+                }
+
+                if (response.status === 409) {
+                    showNotification('Выбранные даты недоступны.', 'error');
+                    return;
+                }
+
+                if (response.status >= 400 && response.status < 500) {
+                    showNotification('Ошибка отправки формы.', 'error');
+                    return;
+                }
+
+                showNotification('Временная техническая ошибка.', 'error');
+            } catch (e) {
+                showNotification('Временная техническая ошибка.', 'error');
             }
         }
 
-        function validateForm(name, phone) {
-            const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
-            return name.length >= 2 && phoneRegex.test(phone);
+        function validateForm(payload) {
+            const phoneRegex = /^[\+]?[0-9\s\-\(\)]{7,32}$/;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const hasRequired = payload.customer_name.length >= 2
+                && payload.spot_id > 0
+                && payload.guests_count > 0
+                && payload.check_in
+                && payload.check_out;
+
+            return hasRequired && phoneRegex.test(payload.customer_phone) && emailRegex.test(payload.customer_email);
         }
 
         function resetForm() {
-            const nameField = document.getElementById('name');
-            const phoneField = document.getElementById('phone');
-            const messageField = document.getElementById('message');
-            
-            if (nameField) nameField.value = '';
-            if (phoneField) phoneField.value = '';
-            if (messageField) messageField.value = '';
+            ['checkIn', 'checkOut', 'spotId', 'guestsCount', 'name', 'phone', 'email', 'message', 'website'].forEach((fieldId) => {
+                const field = document.getElementById(fieldId);
+                if (!field) return;
+                if (field.tagName === 'SELECT') {
+                    field.value = '';
+                } else {
+                    field.value = '';
+                }
+            });
         }
 
         function showAddReviewModal() {
