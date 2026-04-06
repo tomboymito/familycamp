@@ -367,6 +367,7 @@
         }
 
         async function sendMessage() {
+            const submitBtn = document.getElementById('submitBtn');
             const payload = {
                 check_in: document.getElementById('checkIn')?.value || '',
                 check_out: document.getElementById('checkOut')?.value || '',
@@ -380,24 +381,30 @@
             };
 
             if (!validateForm(payload)) {
-                showNotification('Ошибка отправки формы: проверьте обязательные поля и формат телефона/email.', 'error');
+                showNotification('Ошибка отправки формы: проверьте поля и даты.', 'error');
                 return;
             }
 
+            submitBtn.disabled = true;
+            const initialText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="btn-icon"></span>Отправка...';
+
             try {
                 const apiBaseUrl = window.API_BASE_URL || '';
-                const idempotencyKey = `book_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+                const availability = await fetch(`${apiBaseUrl}/availability?check_in=${payload.check_in}&check_out=${payload.check_out}&spot_id=${payload.spot_id}`);
+                const availabilityData = await availability.json().catch(() => ({}));
+                if (!availability.ok || availabilityData.available === false) {
+                    showNotification('Выбранные даты заняты.', 'error');
+                    return;
+                }
 
-                const response = await fetch(`${apiBaseUrl}/bookings`, {
+                const response = await fetch(`${apiBaseUrl}/booking`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Idempotency-Key': idempotencyKey
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(payload)
                 });
-
-                await response.json().catch(() => ({}));
 
                 if (response.ok) {
                     showNotification('Бронь успешно отправлена.', 'success');
@@ -410,14 +417,17 @@
                     return;
                 }
 
-                if (response.status >= 400 && response.status < 500) {
-                    showNotification('Ошибка отправки формы.', 'error');
+                if (response.status === 429) {
+                    showNotification('Слишком много запросов. Повторите позже.', 'error');
                     return;
                 }
 
-                showNotification('Временная техническая ошибка.', 'error');
+                showNotification('Ошибка отправки формы.', 'error');
             } catch (e) {
                 showNotification('Временная техническая ошибка.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = initialText;
             }
         }
 
@@ -430,7 +440,8 @@
                 && payload.check_in
                 && payload.check_out;
 
-            return hasRequired && phoneRegex.test(payload.customer_phone) && emailRegex.test(payload.customer_email);
+            const validDateOrder = new Date(payload.check_out) > new Date(payload.check_in);
+            return hasRequired && validDateOrder && phoneRegex.test(payload.customer_phone) && emailRegex.test(payload.customer_email);
         }
 
         function resetForm() {
