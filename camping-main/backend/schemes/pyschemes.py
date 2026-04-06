@@ -1,17 +1,18 @@
-from pydantic import BaseModel
-from typing import Optional, List
-from datetime import datetime, date
+from datetime import date, datetime
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr, Field
 
 
 class BookingStatus(str, Enum):
+    new = "new"
     pending = "pending"
     confirmed = "confirmed"
     cancelled = "cancelled"
-    failed = "failed"
+    crm_error = "crm_error"
 
 
-# Accommodation Types
 class AccommodationTypeBase(BaseModel):
     name: str
     code: str
@@ -32,11 +33,10 @@ class AccommodationTypeResponse(AccommodationTypeBase):
         from_attributes = True
 
 
-# Guest Data
 class GuestDataBase(BaseModel):
     name: str
     surname: str
-    email: str
+    email: EmailStr
     number_phone: int
 
 
@@ -51,23 +51,42 @@ class GuestDataResponse(GuestDataBase):
         from_attributes = True
 
 
-# Bookings
 class BookingBase(BaseModel):
-    accommodation_type_id: int
-    guest_data_id: int
-    start_date: datetime
-    end_date: datetime
-    number_nights: int
-    total_amount: float
+    accommodation_type_id: Optional[int] = None
+    guest_data_id: Optional[int] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    number_nights: Optional[int] = None
+    total_amount: Optional[float] = None
+
+    spot_id: int
+    check_in: date
+    check_out: date
+    guests_count: int = Field(ge=1, le=20)
+    comment: Optional[str] = None
+
+    customer_name: str
+    customer_phone: str = Field(min_length=7, max_length=32)
+    customer_email: EmailStr
+    website: Optional[str] = None  # honeypot field
 
 
 class BookingCreate(BookingBase):
     pass
 
 
-class BookingResponse(BookingBase):
+class BookingResponse(BaseModel):
     id: int
     public_order_id: Optional[str] = None
+
+    spot_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    check_in: Optional[date] = None
+    check_out: Optional[date] = None
+    guests_count: Optional[int] = None
+    comment: Optional[str] = None
+    crm_sync_status: str
+
     status: BookingStatus
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -76,7 +95,6 @@ class BookingResponse(BookingBase):
         from_attributes = True
 
 
-# Reviews
 class ReviewBase(BaseModel):
     external_id: str
     author_name: str
@@ -99,7 +117,6 @@ class ReviewResponse(ReviewBase):
         from_attributes = True
 
 
-# Availability
 class AvailabilityResponse(BaseModel):
     accommodation_type_id: int
     date: date
