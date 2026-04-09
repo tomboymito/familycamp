@@ -10,7 +10,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onCreated: () => void;
-  /** Pre-fill from chess board click */
+  /** Предзаполнение из клика по шахматке */
   prefillPlaceId?: string;
   prefillDate?: string;
 }
@@ -45,7 +45,7 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, prefill
     source:        'phone',
     paymentStatus: 'not_paid',
     adminNote:     '',
-    totalPrice:    '',    // will be auto-calculated but can be overridden
+    totalPrice:    '',    // автоподстановка цены с возможностью ручной корректировки
   });
   const [customerQuery, setCustomerQuery] = useState('');
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
@@ -57,12 +57,12 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, prefill
   const [error, setError] = useState<string | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load places once
+  // Загружаем список мест один раз
   useEffect(() => {
     api.adminPlaces().then(setPlaces).catch(() => {});
   }, []);
 
-  // Sync prefill
+  // Синхронизируем предзаполненные значения
   useEffect(() => {
     if (prefillPlaceId) setForm((f) => ({ ...f, placeId: prefillPlaceId }));
     if (prefillDate) {
@@ -72,7 +72,7 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, prefill
     }
   }, [prefillPlaceId, prefillDate]);
 
-  // Auto-calculate price when place/dates change
+  // Автопересчёт цены при изменении места/дат
   useEffect(() => {
     if (!form.placeId || !form.checkIn || !form.checkOut || form.checkIn >= form.checkOut) {
       setCalculatedPrice(null);
@@ -95,7 +95,7 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, prefill
     return () => clearTimeout(timer);
   }, [form.placeId, form.checkIn, form.checkOut, form.guestsCount]);
 
-  // Customer search with debounce
+  // Поиск клиента с debounce
   const handleCustomerSearch = useCallback((q: string) => {
     setCustomerQuery(q);
     setSelectedCustomer(null);
@@ -175,14 +175,14 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, prefill
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
-        {/* Header */}
+        {/* Заголовок */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
           <h2 className="font-bold text-lg text-gray-900">Новое бронирование</h2>
           <button onClick={handleClose} className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 transition-colors">✕</button>
         </div>
 
         <div className="px-6 py-5 space-y-5">
-          {/* Place */}
+          {/* Место */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Место размещения *</label>
             <select
@@ -199,7 +199,7 @@ export default function CreateBookingModal({ isOpen, onClose, onCreated, prefill
             </select>
           </div>
 
-          {/* Dates + times */}
+          {/* Даты и время */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Дата заезда *</label>

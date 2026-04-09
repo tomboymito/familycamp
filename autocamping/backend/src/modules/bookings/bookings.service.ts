@@ -1,7 +1,20 @@
-import { BadRequestException, GoneException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  GoneException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
-import { IsEmail, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { Repository } from 'typeorm';
+import {
+  IsEmail,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { Booking } from '../../database/entities/booking.entity';
 import { HoldsService } from '../holds/holds.service';
@@ -63,11 +76,13 @@ export class BookingsService {
     private readonly customersService: CustomersService,
   ) {}
 
-  /** Public: create booking from hold */
+  /** Публичный сценарий: создать бронь из холда */
   async createFromHold(dto: CreateBookingDto) {
-    const hold = await this.holdsService.findByToken(dto.holdToken).catch(() => {
-      throw new GoneException('Hold expired or not found');
-    });
+    const hold = await this.holdsService
+      .findByToken(dto.holdToken)
+      .catch(() => {
+        throw new GoneException('Hold expired or not found');
+      });
 
     const customer = await this.customersService.upsertByPhone({
       name: dto.customer.name,
@@ -100,26 +115,44 @@ export class BookingsService {
     const saved = await this.repo.save(booking);
     await this.holdsService.deleteById(hold.id);
 
-    return { bookingId: saved.id, status: saved.status, totalPrice: saved.totalPrice };
+    return {
+      id: saved.id,
+      bookingId: saved.id,
+      status: saved.status,
+      totalPrice: saved.totalPrice,
+    };
   }
 
-  /** Check for overlapping confirmed bookings */
-  async findConflicts(placeId: string, checkIn: string, checkOut: string, excludeId?: string): Promise<Booking[]> {
-    const qb = this.repo.createQueryBuilder('b')
+  /** Проверка пересечений с существующими бронированиями */
+  async findConflicts(
+    placeId: string,
+    checkIn: string,
+    checkOut: string,
+    excludeId?: string,
+  ): Promise<Booking[]> {
+    const qb = this.repo
+      .createQueryBuilder('b')
       .where('b.place_id = :placeId', { placeId })
-      .andWhere('b.status NOT IN (:...statuses)', { statuses: ['cancelled', 'expired', 'draft'] })
+      .andWhere('b.status NOT IN (:...statuses)', {
+        statuses: ['cancelled', 'expired', 'draft'],
+      })
       .andWhere('b.check_in < :checkOut', { checkOut })
       .andWhere('b.check_out > :checkIn', { checkIn });
     if (excludeId) qb.andWhere('b.id != :excl', { excl: excludeId });
     return qb.getMany();
   }
 
-  /** Admin: create booking manually (no hold required) */
+  /** Админский сценарий: ручное создание бронирования (без холда) */
   async createAdmin(dto: CreateAdminBookingDto) {
-    if (dto.checkIn >= dto.checkOut) throw new BadRequestException('check_out must be after check_in');
+    if (dto.checkIn >= dto.checkOut)
+      throw new BadRequestException('check_out must be after check_in');
 
-    // Conflict check — warn but still create (admin override)
-    const conflicts = await this.findConflicts(dto.placeId, dto.checkIn, dto.checkOut);
+    // Проверка конфликта — предупреждаем, но всё равно создаём (админский override)
+    const conflicts = await this.findConflicts(
+      dto.placeId,
+      dto.checkIn,
+      dto.checkOut,
+    );
 
     const customer = await this.customersService.upsertByPhone({
       name: dto.customer.name,
@@ -128,11 +161,17 @@ export class BookingsService {
       carNumber: dto.customer.carNumber,
     });
 
-    const price = await this.pricingService.calculate(dto.placeId, dto.checkIn, dto.checkOut, dto.guestsCount);
+    const price = await this.pricingService.calculate(
+      dto.placeId,
+      dto.checkIn,
+      dto.checkOut,
+      dto.guestsCount,
+    );
 
-    const conflictNote = conflicts.length > 0
-      ? `⚠️ КОНФЛИКТ: пересекается с ${conflicts.map(c => c.id.slice(0,8)).join(', ')}\n`
-      : '';
+    const conflictNote =
+      conflicts.length > 0
+        ? `⚠️ КОНФЛИКТ: пересекается с ${conflicts.map((c) => c.id.slice(0, 8)).join(', ')}\n`
+        : '';
 
     const booking = this.repo.create({
       placeId: dto.placeId,
@@ -144,18 +183,29 @@ export class BookingsService {
       guestsCount: dto.guestsCount,
       source: dto.source ?? 'admin',
       status: 'confirmed',
-      paymentStatus: dto.paymentStatus ?? 'not_paid',
+      paymentStatus:
+        this.normalizePaymentStatus(dto.paymentStatus) ?? 'not_paid',
       totalPrice: String(price.total),
       adminNote: conflictNote + (dto.adminNote ?? ''),
       crmSyncStatus: 'pending',
     } as Booking);
 
     const saved = await this.repo.save(booking);
-    return { ...saved, conflicts: conflicts.map(c => ({ id: c.id, checkIn: c.checkIn, checkOut: c.checkOut })) };
+    return {
+      ...saved,
+      conflicts: conflicts.map((c) => ({
+        id: c.id,
+        checkIn: c.checkIn,
+        checkOut: c.checkOut,
+      })),
+    };
   }
 
   findPublic(id: string) {
-    return this.repo.findOne({ where: { id }, relations: ['place', 'customer'] });
+    return this.repo.findOne({
+      where: { id },
+      relations: ['place', 'customer'],
+    });
   }
 
   async findAdmin(id: string) {
@@ -172,7 +222,8 @@ export class BookingsService {
     const limit = Math.min(query.limit ?? 20, 100);
     const skip = (page - 1) * limit;
 
-    const qb = this.repo.createQueryBuilder('b')
+    const qb = this.repo
+      .createQueryBuilder('b')
       .leftJoinAndSelect('b.place', 'place')
       .leftJoinAndSelect('place.accommodationType', 'type')
       .leftJoinAndSelect('b.customer', 'customer')
@@ -180,11 +231,16 @@ export class BookingsService {
       .skip(skip)
       .take(limit);
 
-    if (query.status) qb.andWhere('b.status = :status', { status: query.status });
-    if (query.source) qb.andWhere('b.source = :source', { source: query.source });
-    if (query.placeId) qb.andWhere('b.place_id = :placeId', { placeId: query.placeId });
+    if (query.status)
+      qb.andWhere('b.status = :status', { status: query.status });
+    if (query.source)
+      qb.andWhere('b.source = :source', { source: query.source });
+    if (query.placeId)
+      qb.andWhere('b.place_id = :placeId', { placeId: query.placeId });
     if (query.q) {
-      qb.andWhere('(customer.name ILIKE :q OR customer.phone ILIKE :q)', { q: `%${query.q}%` });
+      qb.andWhere('(customer.name ILIKE :q OR customer.phone ILIKE :q)', {
+        q: `%${query.q}%`,
+      });
     }
 
     const [items, total] = await qb.getManyAndCount();
@@ -197,7 +253,9 @@ export class BookingsService {
   }
 
   async updatePayment(id: string, paymentStatus: string) {
-    await this.repo.update(id, { paymentStatus });
+    await this.repo.update(id, {
+      paymentStatus: this.normalizePaymentStatus(paymentStatus),
+    });
     return this.findAdmin(id);
   }
 
@@ -207,12 +265,21 @@ export class BookingsService {
   }
 
   async update(id: string, dto: UpdateBookingDto) {
-    await this.repo.update(id, dto);
+    await this.repo.update(id, {
+      ...dto,
+      paymentStatus: this.normalizePaymentStatus(dto.paymentStatus),
+    });
     return this.findAdmin(id);
   }
 
   async updateTimes(id: string, checkInTime: string, checkOutTime: string) {
     await this.repo.update(id, { checkInTime, checkOutTime });
     return this.findAdmin(id);
+  }
+
+  private normalizePaymentStatus(value?: string): string | undefined {
+    if (!value) return value;
+    if (value === 'unpaid') return 'not_paid';
+    return value;
   }
 }

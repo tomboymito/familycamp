@@ -34,7 +34,7 @@ export interface Place {
 }
 
 export interface AvailablePlace extends Place {
-  state: 'free' | 'hold';
+  state: 'free' | 'hold' | 'booked' | 'blocked' | 'partial';
   type: AccommodationType;
   pricePerNight: string | null;
 }
@@ -58,7 +58,8 @@ export interface Hold {
 }
 
 export interface Booking {
-  id: string;
+  id?: string;
+  bookingId?: string;
   status: string;
   paymentStatus: string;
   totalPrice: string | null;

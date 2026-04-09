@@ -42,6 +42,7 @@ export default function Customers() {
   const navigate = useNavigate();
   const [result, setResult] = useState<CustomerListResult | null>(null);
   const [q, setQ] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
   const [activeTag, setActiveTag] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -62,24 +63,27 @@ export default function Customers() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(q, activeTag, page); }, []);
+  useEffect(() => {
+    load(debouncedQ, activeTag, page);
+  }, [debouncedQ, activeTag, page]);
 
   const handleSearch = (val: string) => {
     setQ(val);
     clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => { setPage(1); load(val, activeTag, 1); }, 300);
+    searchTimer.current = setTimeout(() => {
+      setDebouncedQ(val);
+      setPage(1);
+    }, 300);
   };
 
   const handleTag = (tag: string) => {
     const next = activeTag === tag ? '' : tag;
     setActiveTag(next);
     setPage(1);
-    load(q, next, 1);
   };
 
   const handlePage = (pg: number) => {
     setPage(pg);
-    load(q, activeTag, pg);
   };
 
   const openCustomer = async (id: string) => {
@@ -114,7 +118,7 @@ export default function Customers() {
       });
       setSelected(updated);
       setEditing(false);
-      load(q, activeTag, page);
+      load(debouncedQ, activeTag, page);
     } catch (e) { console.error(e); }
     finally { setSaving(false); }
   };
