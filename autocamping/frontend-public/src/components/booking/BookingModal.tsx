@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, AvailablePlace, Hold, PriceCalculation } from '@/lib/api';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Типы ───────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -23,7 +23,7 @@ interface CustomerForm {
 
 type ModalState = 'idle' | 'loading' | 'success' | 'error' | 'hold_expired';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Вспомогательные функции ────────────────────────────────────────────────
 
 function localDateStr(d: Date): string {
   const y = d.getFullYear();
@@ -46,7 +46,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-// ─── Mini-map: camp layout ────────────────────────────────────────────────
+// ─── Мини-карта: схема кемпинга ────────────────────────────────────────────
 
 const PLACE_LAYOUT = [
   { code: 'A1', x: 1, y: 1, type: 'pitch' },
@@ -64,7 +64,7 @@ const PLACE_LAYOUT = [
 const TYPE_ICON: Record<string, string> = { pitch: '🚗', tent: '⛺', cabin: '🏠' };
 const TYPE_LABEL: Record<string, string> = { pitch: 'Автопитч', tent: 'Палатка', cabin: 'Домик' };
 
-// ─── Step components ─────────────────────────────────────────────────────────
+// ─── Компоненты шагов ───────────────────────────────────────────────────────
 
 function StepIndicator({ current }: { current: Step }) {
   const steps = ['Даты', 'Место', 'Цена', 'Данные', 'Готово'];
@@ -93,7 +93,7 @@ function StepIndicator({ current }: { current: Step }) {
   );
 }
 
-// Step 1 — Date + guests
+// Шаг 1 — Даты и гости
 function Step1Dates({
   form,
   onChange,
@@ -162,7 +162,7 @@ function Step1Dates({
   );
 }
 
-// Step 2 — Place selection (mini-map)
+// Шаг 2 — Выбор места (мини-карта)
 function Step2Place({
   dates,
   availablePlaces,
@@ -180,7 +180,7 @@ function Step2Place({
   onNext: () => void;
   onBack: () => void;
 }) {
-  const availableIds = new Set(availablePlaces.map((p) => p.id));
+  const selectableCount = availablePlaces.filter((p) => p.state === 'free').length;
 
   return (
     <div>
@@ -193,7 +193,7 @@ function Step2Place({
         <div className="flex items-center justify-center h-40 text-gray-400">
           <span className="animate-spin mr-2">⏳</span> Проверяем доступность...
         </div>
-      ) : availablePlaces.length === 0 ? (
+      ) : selectableCount === 0 ? (
         <div className="text-center py-8">
           <div className="text-4xl mb-3">😔</div>
           <p className="text-gray-700 font-medium mb-1">На эти даты нет доступных мест</p>
@@ -201,7 +201,7 @@ function Step2Place({
         </div>
       ) : (
         <>
-          {/* Legend */}
+          {/* Легенда */}
           <div className="flex gap-4 text-xs text-gray-500 mb-4">
             <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-green-400" /> Свободно</div>
             <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-amber-300" /> Бронь-холд</div>
@@ -209,27 +209,30 @@ function Step2Place({
             <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full border-2 border-green-600 bg-green-100" /> Выбрано</div>
           </div>
 
-          {/* Grid map */}
+          {/* Карта-сетка */}
           <div className="bg-green-50 border border-green-100 rounded-xl p-4 mb-4">
-            {/* Row labels */}
+            {/* Подписи рядов */}
             <div className="text-xs text-gray-500 mb-2 font-medium">Схема кемпинга</div>
             <div className="relative" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
               {PLACE_LAYOUT.map((layout) => {
                 const place = availablePlaces.find((p) => p.code === layout.code);
-                const isAvailable = !!place;
+                const isKnown = !!place;
+                const isFree = place?.state === 'free';
                 const isSelected = place?.id === selectedPlaceId;
                 const isHold = place?.state === 'hold';
+                const isBookedOrBlocked = place?.state === 'booked' || place?.state === 'blocked';
 
                 let bg = 'bg-red-100 border-red-200 text-red-400 cursor-not-allowed';
-                if (isAvailable && isHold) bg = 'bg-amber-100 border-amber-200 text-amber-700 cursor-pointer';
-                if (isAvailable && !isHold) bg = 'bg-green-100 border-green-200 text-green-700 cursor-pointer hover:bg-green-200';
+                if (isKnown && isHold) bg = 'bg-amber-100 border-amber-200 text-amber-700 cursor-not-allowed';
+                if (isKnown && isBookedOrBlocked) bg = 'bg-red-100 border-red-200 text-red-400 cursor-not-allowed';
+                if (isKnown && isFree) bg = 'bg-green-100 border-green-200 text-green-700 cursor-pointer hover:bg-green-200';
                 if (isSelected) bg = 'bg-green-600 border-green-700 text-white cursor-pointer';
 
                 return (
                   <button
                     key={layout.code}
                     onClick={() => place && onSelect(place.id)}
-                    disabled={!isAvailable || isHold}
+                    disabled={!isFree}
                     title={place ? `${place.name} · вместимость: ${place.capacity}` : layout.code + ' — занято'}
                     className={`border-2 rounded-xl p-2 text-center transition-all ${bg}`}
                   >
@@ -239,7 +242,7 @@ function Step2Place({
                 );
               })}
             </div>
-            {/* Type labels below map */}
+            {/* Подписи типов под картой */}
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
               {Object.entries(TYPE_LABEL).map(([k, v]) => (
                 <span key={k}>{TYPE_ICON[k]} {v}</span>
@@ -247,7 +250,7 @@ function Step2Place({
             </div>
           </div>
 
-          {/* Selected place details */}
+          {/* Детали выбранного места */}
           {selectedPlaceId && (() => {
             const p = availablePlaces.find((pl) => pl.id === selectedPlaceId);
             if (!p) return null;
@@ -277,7 +280,7 @@ function Step2Place({
   );
 }
 
-// Step 3 — Price display
+// Шаг 3 — Отображение стоимости
 function Step3Price({
   dates,
   selectedPlace,
@@ -366,7 +369,7 @@ function Step3Price({
   );
 }
 
-// Step 4 — Customer form
+// Шаг 4 — Форма клиента
 function Step4Customer({
   form,
   onChange,
@@ -454,7 +457,7 @@ function Step4Customer({
   );
 }
 
-// Step 5 — Success / Error / Hold expired
+// Шаг 5 — Успех / Ошибка / Истёк холд
 function Step5Result({
   state,
   paymentUrl,
@@ -516,7 +519,7 @@ function Step5Result({
   return null;
 }
 
-// ─── Main modal ───────────────────────────────────────────────────────────────
+// ─── Основное модальное окно ────────────────────────────────────────────────
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -556,23 +559,23 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
     setCustomer({ name: '', phone: '', email: '', carNumber: '', comment: '' });
   }, []);
 
-  // Close on Escape
+  // Закрытие по Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  // Cancel hold on close if not booked
+  // Отменяем холд при закрытии, если бронирование не завершено
   const handleClose = useCallback(() => {
     if (hold && !bookingId) {
-      api.cancelHold(hold.sessionToken).catch(() => {/* best effort */});
+      api.cancelHold(hold.sessionToken).catch(() => {/* попытка без критичного падения */});
     }
     reset();
     onClose();
   }, [hold, bookingId, reset, onClose]);
 
-  // Step 1 → 2: load availability
+  // Шаг 1 → 2: загружаем доступность
   const handleStep1Next = useCallback(async () => {
     setLoading(true);
     try {
@@ -586,7 +589,7 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
     }
   }, [dates]);
 
-  // Step 2 → 3: calculate price
+  // Шаг 2 → 3: считаем стоимость
   const handleStep2Next = useCallback(async () => {
     if (!selectedPlaceId) return;
     setLoading(true);
@@ -602,33 +605,36 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
     }
   }, [selectedPlaceId, dates]);
 
-  // Step 3 → 4
+  // Шаг 3 → 4
   const handleStep3Next = useCallback(() => setStep(4), []);
 
-  // Step 4 → 5: create hold + booking + initiate payment
+  // Шаг 4 → 5: создаём холд + бронь + инициализируем оплату
   const handleStep4Next = useCallback(async () => {
     if (!selectedPlaceId) return;
     setLoading(true);
     setError(null);
     try {
-      // Create hold
+      // Создаём холд
       const newHold = await api.createHold(selectedPlaceId, dates.checkIn, dates.checkOut, dates.guests);
       setHold(newHold);
 
-      // Create booking from hold
+      // Создаём бронь из холда
       const booking = await api.createBooking(
         newHold.sessionToken,
         { name: customer.name, phone: customer.phone, email: customer.email || undefined, carNumber: customer.carNumber || undefined },
         customer.comment || undefined,
       );
-      setBookingId(booking.id);
+      const newBookingId = booking.id ?? booking.bookingId ?? null;
+      setBookingId(newBookingId);
 
-      // Initiate payment
-      try {
-        const payment = await api.initiatePayment(booking.id);
-        setPaymentUrl(payment.redirectUrl);
-      } catch {
-        // Payment initiation optional; booking is created
+      // Инициализируем оплату
+      if (newBookingId) {
+        try {
+          const payment = await api.initiatePayment(newBookingId);
+          setPaymentUrl(payment.redirectUrl);
+        } catch {
+          // Инициализация оплаты не обязательна: бронь уже создана
+        }
       }
 
       setModalState('success');
@@ -661,7 +667,7 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto relative">
-        {/* Header */}
+        {/* Заголовок */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
           <h2 className="font-bold text-lg text-green-dark">Бронирование</h2>
           <button
@@ -672,7 +678,7 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
           </button>
         </div>
 
-        {/* Body */}
+        {/* Тело модального окна */}
         <div className="px-6 py-6">
           {!isStep5 && <StepIndicator current={step} />}
 

@@ -44,7 +44,7 @@ const mockBooking = {
   checkOut: '2025-07-05',
   guestsCount: 2,
   status: 'awaiting_payment',
-  paymentStatus: 'unpaid',
+  paymentStatus: 'not_paid',
   totalPrice: '8400',
   source: 'website',
   createdAt: new Date(),
@@ -90,6 +90,7 @@ describe('BookingsService.createFromHold', () => {
     });
 
     expect(result).toBeDefined();
+    expect(result.id).toBe('booking-uuid-1');
     expect(result.bookingId).toBe('booking-uuid-1');
     expect(holdsService.findByToken).toHaveBeenCalledWith(HOLD_TOKEN);
     expect(bookingRepo.save).toHaveBeenCalledTimes(1);

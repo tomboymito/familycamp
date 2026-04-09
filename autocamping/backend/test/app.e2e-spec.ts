@@ -4,6 +4,26 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 
+interface HealthResponse {
+  status: string;
+  info: Record<string, unknown>;
+}
+
+interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+interface PlaceResponse {
+  id: string;
+}
+
+interface PricingResponse {
+  nights: number;
+  breakdown: unknown[];
+  total: number;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function createApp(): Promise<INestApplication<App>> {
@@ -22,15 +42,20 @@ async function createApp(): Promise<INestApplication<App>> {
 
 describe('GET /api/v1/health', () => {
   let app: INestApplication<App>;
-  beforeAll(async () => { app = await createApp(); });
-  afterAll(async () => { await app.close(); });
+  beforeAll(async () => {
+    app = await createApp();
+  });
+  afterAll(async () => {
+    await app.close();
+  });
 
   it('returns Terminus health with DB status', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/health')
       .expect(200);
-    expect(res.body.status).toBe('ok');
-    expect(res.body.info).toHaveProperty('database');
+    const body = res.body as HealthResponse;
+    expect(body.status).toBe('ok');
+    expect(body.info).toHaveProperty('database');
   });
 });
 
@@ -38,63 +63,67 @@ describe('GET /api/v1/health', () => {
 
 describe('POST /api/v1/auth/login', () => {
   let app: INestApplication<App>;
-  beforeAll(async () => { app = await createApp(); });
-  afterAll(async () => { await app.close(); });
+  beforeAll(async () => {
+    app = await createApp();
+  });
+  afterAll(async () => {
+    await app.close();
+  });
 
   it('returns tokens for valid admin credentials', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: 'admin@camp.ru', password: 'password123' })
       .expect(200);
-    expect(res.body).toHaveProperty('accessToken');
-    expect(res.body).toHaveProperty('refreshToken');
-    expect(typeof res.body.accessToken).toBe('string');
+    const body = res.body as LoginResponse;
+    expect(body).toHaveProperty('accessToken');
+    expect(body).toHaveProperty('refreshToken');
+    expect(typeof body.accessToken).toBe('string');
   });
 
   it('returns 401 for wrong password', () =>
     request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: 'admin@camp.ru', password: 'wrongpassword' })
-      .expect(401),
-  );
+      .expect(401));
 
   it('returns 401 for nonexistent user', () =>
     request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: 'nobody@camp.ru', password: 'correctlength' })
-      .expect(401),
-  );
+      .expect(401));
 
   it('returns 400 when email missing', () =>
     request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ password: 'password123' })
-      .expect(400),
-  );
+      .expect(400));
 });
 
 // ─── JWT guard ────────────────────────────────────────────────────────────────
 
 describe('JWT guard', () => {
   let app: INestApplication<App>;
-  beforeAll(async () => { app = await createApp(); });
-  afterAll(async () => { await app.close(); });
+  beforeAll(async () => {
+    app = await createApp();
+  });
+  afterAll(async () => {
+    await app.close();
+  });
 
   it('returns 401 for chess-board without token', () =>
     request(app.getHttpServer())
       .get('/api/v1/admin/chess-board?from=2025-07-01&to=2025-07-07')
-      .expect(401),
-  );
+      .expect(401));
 
   it('returns 401 for admin/bookings without token', () =>
-    request(app.getHttpServer()).get('/api/v1/admin/bookings').expect(401),
-  );
+    request(app.getHttpServer()).get('/api/v1/admin/bookings').expect(401));
 
   it('returns 200 for chess-board with valid token', async () => {
     const loginRes = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: 'admin@camp.ru', password: 'password123' });
-    const token = (loginRes.body as { accessToken: string }).accessToken;
+    const token = (loginRes.body as LoginResponse).accessToken;
     return request(app.getHttpServer())
       .get('/api/v1/admin/chess-board?from=2025-07-01&to=2025-07-07')
       .set('Authorization', `Bearer ${token}`)
@@ -106,33 +135,51 @@ describe('JWT guard', () => {
 
 describe('GET /api/v1/accommodation-types', () => {
   let app: INestApplication<App>;
-  beforeAll(async () => { app = await createApp(); });
-  afterAll(async () => { await app.close(); });
+  beforeAll(async () => {
+    app = await createApp();
+  });
+  afterAll(async () => {
+    await app.close();
+  });
 
   it('returns non-empty array with slug field', async () => {
-    const res = await request(app.getHttpServer()).get('/api/v1/accommodation-types').expect(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBeGreaterThan(0);
-    expect(res.body[0]).toHaveProperty('slug');
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/accommodation-types')
+      .expect(200);
+    const body = res.body as Record<string, unknown>[];
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBeGreaterThan(0);
+    expect(body[0]).toHaveProperty('slug');
   });
 });
 
 describe('GET /api/v1/places', () => {
   let app: INestApplication<App>;
-  beforeAll(async () => { app = await createApp(); });
-  afterAll(async () => { await app.close(); });
+  beforeAll(async () => {
+    app = await createApp();
+  });
+  afterAll(async () => {
+    await app.close();
+  });
 
   it('returns non-empty array of places', async () => {
-    const res = await request(app.getHttpServer()).get('/api/v1/places').expect(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBeGreaterThan(0);
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/places')
+      .expect(200);
+    const body = res.body as PlaceResponse[];
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBeGreaterThan(0);
   });
 });
 
 describe('GET /api/v1/availability', () => {
   let app: INestApplication<App>;
-  beforeAll(async () => { app = await createApp(); });
-  afterAll(async () => { await app.close(); });
+  beforeAll(async () => {
+    app = await createApp();
+  });
+  afterAll(async () => {
+    await app.close();
+  });
 
   it('returns array for valid dates', async () => {
     const res = await request(app.getHttpServer())
@@ -144,8 +191,7 @@ describe('GET /api/v1/availability', () => {
   it('returns 400 when check_in missing', () =>
     request(app.getHttpServer())
       .get('/api/v1/availability?check_out=2025-08-05')
-      .expect(400),
-  );
+      .expect(400));
 });
 
 // ─── Pricing ─────────────────────────────────────────────────────────────────
@@ -157,56 +203,74 @@ describe('POST /api/v1/pricing/calculate', () => {
   beforeAll(async () => {
     app = await createApp();
     const res = await request(app.getHttpServer()).get('/api/v1/places');
-    placeId = (res.body as { id: string }[])[0].id;
+    placeId = (res.body as PlaceResponse[])[0].id;
   });
-  afterAll(async () => { await app.close(); });
+  afterAll(async () => {
+    await app.close();
+  });
 
   it('calculates price correctly (4 nights)', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/pricing/calculate')
-      .send({ placeId, checkIn: '2025-07-01', checkOut: '2025-07-05', guestsCount: 2 })
+      .send({
+        placeId,
+        checkIn: '2025-07-01',
+        checkOut: '2025-07-05',
+        guestsCount: 2,
+      })
       .expect(200);
-    expect(res.body.nights).toBe(4);
-    expect(res.body).toHaveProperty('total');
-    expect(Array.isArray(res.body.breakdown)).toBe(true);
-    expect(res.body.breakdown).toHaveLength(4);
+    const body = res.body as PricingResponse;
+    expect(body.nights).toBe(4);
+    expect(body).toHaveProperty('total');
+    expect(Array.isArray(body.breakdown)).toBe(true);
+    expect(body.breakdown).toHaveLength(4);
   });
 
   it('returns 400 when checkOut ≤ checkIn', () =>
     request(app.getHttpServer())
       .post('/api/v1/pricing/calculate')
-      .send({ placeId, checkIn: '2025-07-05', checkOut: '2025-07-01', guestsCount: 2 })
-      .expect(400),
-  );
+      .send({
+        placeId,
+        checkIn: '2025-07-05',
+        checkOut: '2025-07-01',
+        guestsCount: 2,
+      })
+      .expect(400));
 
   it('returns 400 when placeId missing', () =>
     request(app.getHttpServer())
       .post('/api/v1/pricing/calculate')
       .send({ checkIn: '2025-07-01', checkOut: '2025-07-05', guestsCount: 2 })
-      .expect(400),
-  );
+      .expect(400));
 });
 
 // ─── Holds — validation ───────────────────────────────────────────────────────
 
 describe('POST /api/v1/holds — validation', () => {
   let app: INestApplication<App>;
-  beforeAll(async () => { app = await createApp(); });
-  afterAll(async () => { await app.close(); });
+  beforeAll(async () => {
+    app = await createApp();
+  });
+  afterAll(async () => {
+    await app.close();
+  });
 
   it('returns 400 when placeId missing', () =>
     request(app.getHttpServer())
       .post('/api/v1/holds')
       .send({ checkIn: '2026-08-01', checkOut: '2026-08-05', guestsCount: 2 })
-      .expect(400),
-  );
+      .expect(400));
 
   it('returns 400 for non-UUID placeId', () =>
     request(app.getHttpServer())
       .post('/api/v1/holds')
-      .send({ placeId: 'not-a-uuid', checkIn: '2026-08-01', checkOut: '2026-08-05', guestsCount: 2 })
-      .expect(400),
-  );
+      .send({
+        placeId: 'not-a-uuid',
+        checkIn: '2026-08-01',
+        checkOut: '2026-08-05',
+        guestsCount: 2,
+      })
+      .expect(400));
 });
 
 // ─── Race condition ───────────────────────────────────────────────────────────
@@ -218,10 +282,12 @@ describe('Race condition: concurrent holds on same place', () => {
   beforeAll(async () => {
     app = await createApp();
     const res = await request(app.getHttpServer()).get('/api/v1/places');
-    const places = res.body as { id: string }[];
+    const places = res.body as PlaceResponse[];
     placeId = places[Math.floor(places.length / 2)].id;
   });
-  afterAll(async () => { await app.close(); });
+  afterAll(async () => {
+    await app.close();
+  });
 
   it('exactly one request succeeds (201), rest get 409', async () => {
     // Use a unique date range per test run to avoid conflicts from prior runs
@@ -237,7 +303,9 @@ describe('Race condition: concurrent holds on same place', () => {
       ),
     );
 
-    const statuses = results.map((r) => (r.status === 'fulfilled' ? r.value.status : 500));
+    const statuses = results.map((r) =>
+      r.status === 'fulfilled' ? r.value.status : 500,
+    );
     const created = statuses.filter((s) => s === 201).length;
     const conflicts = statuses.filter((s) => s === 409).length;
 

@@ -15,6 +15,7 @@ const PAYMENT_OPTIONS = [
   { value: 'not_paid', label: 'Не оплачено' },
   { value: 'paid',     label: 'Оплачено' },
   { value: 'refunded', label: 'Возврат' },
+  { value: 'payment_failed', label: 'Ошибка оплаты' },
 ];
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
