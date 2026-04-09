@@ -28,8 +28,12 @@ async function bootstrap() {
       process.env.ADMIN_URL ?? 'http://localhost:5173',
       'http://localhost',
       'http://localhost:80',
+      'http://localhost:3002',
       'http://localhost:4173',
       'http://localhost:5173',
+      'http://127.0.0.1:3002',
+      'http://127.0.0.1:4173',
+      'http://127.0.0.1:5173',
     ],
     credentials: true,
   });

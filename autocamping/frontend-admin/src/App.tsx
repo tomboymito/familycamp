@@ -16,9 +16,11 @@ import IcalSync from '@/pages/IcalSync';
 import Webhooks from '@/pages/Webhooks';
 
 export default function App() {
+  const basename = (import.meta.env.BASE_URL || '/admin/').replace(/\/$/, '') || '/';
+
   return (
     <AuthProvider>
-      <BrowserRouter basename="/admin">
+      <BrowserRouter basename={basename}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route
