@@ -13,12 +13,13 @@ function localDate(offsetDays = 0): string {
 @Injectable()
 export class DashboardService {
   constructor(
-    @InjectRepository(Booking) private readonly bookingRepo: Repository<Booking>,
-    @InjectRepository(Place)   private readonly placeRepo: Repository<Place>,
+    @InjectRepository(Booking)
+    private readonly bookingRepo: Repository<Booking>,
+    @InjectRepository(Place) private readonly placeRepo: Repository<Place>,
   ) {}
 
   async getSummary() {
-    const today    = localDate(0);
+    const today = localDate(0);
     const tomorrow = localDate(1);
     const monthStart = today.slice(0, 8) + '01';
 
@@ -82,7 +83,10 @@ export class DashboardService {
         .getRawOne<{ total: string }>(),
       // Подтверждённые но неоплаченные
       this.bookingRepo.count({
-        where: { status: 'confirmed', paymentStatus: In(['not_paid', 'unpaid']) },
+        where: {
+          status: 'confirmed',
+          paymentStatus: In(['not_paid', 'unpaid']),
+        },
       }),
       // Все места (для % загрузки и статуса уборки)
       this.placeRepo.find({ where: { isActive: true } }),
@@ -93,21 +97,28 @@ export class DashboardService {
       .createQueryBuilder('b')
       .innerJoinAndSelect('b.place', 'p')
       .innerJoinAndSelect('b.customer', 'c')
-      .where('b.status NOT IN (:...s)', { s: ['cancelled', 'expired', 'draft'] })
-      .andWhere(`EXISTS (
+      .where('b.status NOT IN (:...s)', {
+        s: ['cancelled', 'expired', 'draft'],
+      })
+      .andWhere(
+        `EXISTS (
         SELECT 1 FROM bookings b2
         WHERE b2.place_id = b.place_id
           AND b2.id != b.id
           AND b2.status NOT IN ('cancelled','expired','draft')
           AND b2.check_in < b.check_out
           AND b2.check_out > b.check_in
-      )`)
+      )`,
+      )
       .orderBy('b.check_in', 'ASC')
       .getMany();
 
     const totalPlaces = allPlaces.length;
-    const occupancyPct = totalPlaces > 0 ? Math.round((activeToday / totalPlaces) * 100) : 0;
-    const dirtyPlaces = allPlaces.filter((p) => p.housekeepingStatus === 'dirty');
+    const occupancyPct =
+      totalPlaces > 0 ? Math.round((activeToday / totalPlaces) * 100) : 0;
+    const dirtyPlaces = allPlaces.filter(
+      (p) => p.housekeepingStatus === 'dirty',
+    );
 
     const mapBooking = (b: Booking) => ({
       id: b.id,
@@ -117,8 +128,8 @@ export class DashboardService {
       placeCode: b.place?.code ?? '—',
       checkIn: b.checkIn,
       checkOut: b.checkOut,
-      checkInTime: (b as any).checkInTime ?? '12:00',
-      checkOutTime: (b as any).checkOutTime ?? '14:00',
+      checkInTime: b.checkInTime ?? '12:00',
+      checkOutTime: b.checkOutTime ?? '14:00',
       guestsCount: b.guestsCount,
       paymentStatus: b.paymentStatus,
       totalPrice: b.totalPrice,
@@ -131,12 +142,16 @@ export class DashboardService {
       occupancy: { active: activeToday, total: totalPlaces, pct: occupancyPct },
       revenue: {
         month: parseFloat(monthPaid?.total ?? '0'),
-        week:  parseFloat(weekPaid?.total  ?? '0'),
+        week: parseFloat(weekPaid?.total ?? '0'),
       },
       attention: {
         unpaidConfirmed,
-        dirtyPlaces: dirtyPlaces.map((p) => ({ id: p.id, code: p.code, name: p.name })),
-        conflicts: conflictBookings.map(b => ({
+        dirtyPlaces: dirtyPlaces.map((p) => ({
+          id: p.id,
+          code: p.code,
+          name: p.name,
+        })),
+        conflicts: conflictBookings.map((b) => ({
           id: b.id,
           placeCode: b.place?.code ?? '—',
           guestName: b.customer?.name ?? '—',
@@ -144,10 +159,10 @@ export class DashboardService {
           checkOut: b.checkOut,
         })),
       },
-      checkInsToday:    checkInsToday.map(mapBooking),
-      checkOutsToday:   checkOutsToday.map(mapBooking),
+      checkInsToday: checkInsToday.map(mapBooking),
+      checkOutsToday: checkOutsToday.map(mapBooking),
       checkInsTomorrow: checkInsTomorrow.map(mapBooking),
-      checkOutsTomorrow:checkOutsTomorrow.map(mapBooking),
+      checkOutsTomorrow: checkOutsTomorrow.map(mapBooking),
     };
   }
 }

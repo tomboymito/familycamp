@@ -220,6 +220,12 @@ export class PdfService {
   }
 
   private payLabel(status: string): string {
-    return { paid: 'Оплачено', not_paid: 'Не оплачено', unpaid: 'Не оплачено', refunded: 'Возврат' }[status] ?? status;
+    return {
+      paid: 'Оплачено',
+      not_paid: 'Не оплачено',
+      unpaid: 'Не оплачено',
+      refunded: 'Возврат',
+      payment_failed: 'Ошибка оплаты',
+    }[status] ?? status;
   }
 }

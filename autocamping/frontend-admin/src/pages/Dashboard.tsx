@@ -8,6 +8,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   not_paid: 'Не оплачено',
   unpaid:   'Не оплачено',
   refunded: 'Возврат',
+  payment_failed: 'Ошибка оплаты',
 };
 
 const PAYMENT_COLORS: Record<string, string> = {
@@ -15,6 +16,7 @@ const PAYMENT_COLORS: Record<string, string> = {
   not_paid: 'bg-red-100 text-red-600',
   unpaid:   'bg-red-100 text-red-600',
   refunded: 'bg-gray-100 text-gray-600',
+  payment_failed: 'bg-red-100 text-red-700',
 };
 
 

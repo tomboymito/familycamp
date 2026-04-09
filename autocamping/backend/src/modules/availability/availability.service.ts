@@ -29,8 +29,8 @@ export class AvailabilityService {
   ) {}
 
   /**
-   * Core availability check for a single place and date range.
-   * Returns 'free' | 'booked' | 'blocked' | 'hold'
+   * Базовая проверка доступности для одного места в заданном диапазоне дат.
+   * Возвращает 'free' | 'booked' | 'blocked' | 'hold'
    */
   async checkPlaceAvailability(
     placeId: string,
@@ -63,7 +63,7 @@ export class AvailabilityService {
     return 'free';
   }
 
-  /** GET /availability — all places for a date range */
+  /** GET /availability — все места на указанный диапазон дат */
   async getAvailability(checkIn: string, checkOut: string, typeId?: string, guests?: number) {
     const where: Record<string, unknown> = { isActive: true };
     if (typeId) where.typeId = typeId;
@@ -91,13 +91,13 @@ export class AvailabilityService {
     return results;
   }
 
-  /** GET /availability/:place_id */
+  /** GET /availability/:place_id — доступность конкретного места */
   async getPlaceAvailability(placeId: string, checkIn: string, checkOut: string) {
     const state = await this.checkPlaceAvailability(placeId, checkIn, checkOut);
     return { placeId, checkIn, checkOut, state };
   }
 
-  /** GET /availability/calendar — for mini-map on public site */
+  /** GET /availability/calendar — данные для мини-карты на публичном сайте */
   async getCalendar(month: number, year: number, typeId?: string) {
     const from = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
@@ -107,7 +107,7 @@ export class AvailabilityService {
     if (typeId) where.typeId = typeId;
     const places = await this.placeRepo.find({ where });
 
-    // Build day-by-day map
+    // Формируем карту состояний по дням
     const days: Record<string, SlotState[]> = {};
     for (let d = 1; d <= lastDay; d++) {
       const date = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;

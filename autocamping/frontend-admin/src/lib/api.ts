@@ -25,7 +25,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Типы ────────────────────────────────────────────────────────────────────
 
 export interface LoginResult {
   accessToken: string;
@@ -115,7 +115,7 @@ export interface NotificationLog {
 export interface Booking {
   id: string;
   status: 'draft' | 'awaiting_payment' | 'confirmed' | 'cancelled' | 'expired';
-  paymentStatus: 'unpaid' | 'paid' | 'refunded';
+  paymentStatus: 'not_paid' | 'unpaid' | 'paid' | 'refunded' | 'payment_failed';
   checkIn: string;
   checkOut: string;
   checkInTime: string;
@@ -181,7 +181,7 @@ export interface AdminUser {
   createdAt: string;
 }
 
-// ─── API calls ───────────────────────────────────────────────────────────────
+// ─── Вызовы API ──────────────────────────────────────────────────────────────
 
 export const api = {
   login: (email: string, password: string): Promise<LoginResult> =>
@@ -273,7 +273,7 @@ export const api = {
   }): Promise<{ nights: number; pricePerNight: number; total: number; seasonLabel: string }> =>
     request('/pricing/calculate', { method: 'POST', body: JSON.stringify(data) }),
 
-  // Pricing admin
+  // Админка: тарифы
   pricingRulesAdmin: (): Promise<PricingRule[]> => request('/admin/pricing'),
   createPricingRuleAdmin: (data: Omit<PricingRule, 'id' | 'accommodationType'>): Promise<PricingRule> =>
     request('/admin/pricing', { method: 'POST', body: JSON.stringify(data) }),
@@ -282,7 +282,7 @@ export const api = {
   deletePricingRuleAdmin: (id: string): Promise<void> =>
     request(`/admin/pricing/${id}`, { method: 'DELETE' }),
 
-  // Places admin
+  // Админка: места
   createPlace: (data: Omit<Place, 'id' | 'sortOrder' | 'accommodationType' | 'isActive'>): Promise<Place> =>
     request('/admin/places', { method: 'POST', body: JSON.stringify(data) }),
   updatePlace: (id: string, data: Partial<Place>): Promise<Place> =>
@@ -290,7 +290,7 @@ export const api = {
   togglePlace: (id: string): Promise<Place> =>
     request(`/admin/places/${id}/toggle`, { method: 'PATCH' }),
 
-  // Accommodation types
+  // Типы размещения
   accommodationTypesAdmin: (): Promise<{ id: string; name: string; slug: string; defaultCapacity: number; description: string | null; isActive: boolean }[]> =>
     request('/admin/accommodation-types'),
   createAccommodationType: (data: { name: string; slug: string; defaultCapacity: number; description?: string }): Promise<{ id: string; name: string; slug: string }> =>
@@ -298,19 +298,19 @@ export const api = {
   updateAccommodationType: (id: string, data: { name?: string; defaultCapacity?: number; description?: string; isActive?: boolean }): Promise<{ id: string; name: string; slug: string }> =>
     request(`/admin/accommodation-types/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
-  // Settings
+  // Настройки
   settings: (): Promise<Record<string, string>> => request('/admin/settings'),
   updateSettings: (data: Record<string, string>): Promise<Record<string, string>> =>
     request('/admin/settings', { method: 'PATCH', body: JSON.stringify(data) }),
 
-  // Admin users
+  // Администраторы
   adminUsers: (): Promise<AdminUser[]> => request('/admin/users'),
   createAdminUser: (data: { email: string; name: string; password: string }): Promise<AdminUser> =>
     request('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
   updateAdminUser: (id: string, data: { name?: string; isActive?: boolean; password?: string }): Promise<AdminUser> =>
     request(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
-  // Reports
+  // Отчёты
   reportsRevenue: (months?: number): Promise<{ month: string; revenue: number; bookings: number }[]> => {
     const p = new URLSearchParams();
     if (months) p.set('months', String(months));
@@ -340,7 +340,7 @@ export const api = {
   bookingPdfUrl: (id: string, type: 'confirmation' | 'invoice'): string =>
     `${(import.meta.env.VITE_API_URL as string ?? '/api/v1').replace(/\/$/, '')}/admin/bookings/${id}/pdf/${type}`,
 
-  // Webhooks
+  // Вебхуки
   webhookLogs: (page?: number): Promise<{ items: WebhookLog[]; total: number; page: number; pages: number }> => {
     const p = new URLSearchParams();
     if (page) p.set('page', String(page));
@@ -359,7 +359,7 @@ export const api = {
   icalImport: (placeId: string, url: string): Promise<{ created: number; skipped: number }> =>
     request('/admin/ical/import', { method: 'POST', body: JSON.stringify({ placeId, url }) }),
 
-  // Customers CRM
+  // Клиенты CRM
   customers: (params: { q?: string; tag?: string; page?: number; limit?: number }): Promise<CustomerListResult> => {
     const p = new URLSearchParams();
     if (params.q) p.set('q', params.q);
@@ -372,7 +372,7 @@ export const api = {
   updateCustomer: (id: string, data: { name?: string; phone?: string; email?: string; carNumber?: string; notes?: string; tags?: string[] }): Promise<CustomerDetail> =>
     request(`/admin/customers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
-  // Notifications
+  // Уведомления
   sendNotification: (data: {
     bookingId?: string;
     customerId?: string;
@@ -390,7 +390,7 @@ export const api = {
   },
 };
 
-// ─── Dashboard types ──────────────────────────────────────────────────────────
+// ─── Типы дашборда ───────────────────────────────────────────────────────────
 
 export interface DashboardBookingRow {
   id: string;

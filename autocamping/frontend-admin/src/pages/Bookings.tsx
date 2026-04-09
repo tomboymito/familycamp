@@ -12,9 +12,11 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
 };
 
 const PAYMENT_STYLES: Record<string, { bg: string; text: string }> = {
+  not_paid: { bg: '#fff7ed', text: '#c2410c' },
   unpaid: { bg: '#fff7ed', text: '#c2410c' },
   paid: { bg: '#dcfce7', text: '#166534' },
   refunded: { bg: '#ede9fe', text: '#6d28d9' },
+  payment_failed: { bg: '#fee2e2', text: '#991b1b' },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -27,8 +29,14 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function PaymentBadge({ status }: { status: string }) {
-  const s = PAYMENT_STYLES[status] ?? PAYMENT_STYLES.unpaid;
-  const labels: Record<string, string> = { unpaid: 'Не оплачено', paid: 'Оплачено', refunded: 'Возврат' };
+  const s = PAYMENT_STYLES[status] ?? PAYMENT_STYLES.not_paid;
+  const labels: Record<string, string> = {
+    not_paid: 'Не оплачено',
+    unpaid: 'Не оплачено',
+    paid: 'Оплачено',
+    refunded: 'Возврат',
+    payment_failed: 'Ошибка оплаты',
+  };
   return (
     <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: s.bg, color: s.text }}>
       {labels[status] ?? status}

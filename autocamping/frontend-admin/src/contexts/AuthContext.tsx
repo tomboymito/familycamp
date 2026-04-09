@@ -1,14 +1,7 @@
-import { createContext, useCallback, useContext, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { auth } from '@/lib/auth';
 import { api } from '@/lib/api';
-
-interface AuthContextValue {
-  isLoggedIn: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import { AuthContext } from './AuthContextDef';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(auth.isLoggedIn());
@@ -29,10 +22,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
 }

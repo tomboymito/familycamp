@@ -59,7 +59,10 @@ export default function Webhooks() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(page); }, [page]);
+  useEffect(() => {
+    const t = setTimeout(() => { load(page); }, 0);
+    return () => clearTimeout(t);
+  }, [page]);
 
   const copyUrl = async (key: string, url: string) => {
     await navigator.clipboard.writeText(url);

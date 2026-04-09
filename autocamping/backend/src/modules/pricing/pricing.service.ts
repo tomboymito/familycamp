@@ -40,11 +40,18 @@ export interface PriceCalculation {
 @Injectable()
 export class PricingService {
   constructor(
-    @InjectRepository(PricingRule) private readonly ruleRepo: Repository<PricingRule>,
+    @InjectRepository(PricingRule)
+    private readonly ruleRepo: Repository<PricingRule>,
     @InjectRepository(Place) private readonly placeRepo: Repository<Place>,
   ) {}
 
-  async calculate(placeId: string, checkIn: string, checkOut: string, guestsCount: number): Promise<PriceCalculation> {
+  async calculate(
+    placeId: string,
+    checkIn: string,
+    checkOut: string,
+    _guestsCount: number,
+  ): Promise<PriceCalculation> {
+    void _guestsCount;
     const place = await this.placeRepo.findOne({ where: { id: placeId } });
     if (!place) throw new NotFoundException(`Place ${placeId} not found`);
 
@@ -74,7 +81,13 @@ export class PricingService {
     const avgPrice = nights > 0 ? Math.round(total / nights) : 0;
     const mainLabel = breakdown[0]?.seasonLabel ?? 'Стандартный тариф';
 
-    return { nights, pricePerNight: avgPrice, total, seasonLabel: mainLabel, breakdown };
+    return {
+      nights,
+      pricePerNight: avgPrice,
+      total,
+      seasonLabel: mainLabel,
+      breakdown,
+    };
   }
 
   findAll() {
@@ -85,29 +98,41 @@ export class PricingService {
   }
 
   create(dto: CreateRuleInput) {
-    return this.ruleRepo.save(this.ruleRepo.create({
-      typeId: dto.typeId,
-      seasonLabel: dto.seasonLabel,
-      validFrom: dto.validFrom,
-      validTo: dto.validTo,
-      pricePerNight: String(dto.pricePerNight),
-      minGuests: dto.minGuests ?? 1,
-      maxGuests: dto.maxGuests ?? null,
-      isActive: dto.isActive ?? true,
-    }));
+    return this.ruleRepo.save(
+      this.ruleRepo.create({
+        typeId: dto.typeId,
+        seasonLabel: dto.seasonLabel,
+        validFrom: dto.validFrom,
+        validTo: dto.validTo,
+        pricePerNight: String(dto.pricePerNight),
+        minGuests: dto.minGuests ?? 1,
+        maxGuests: dto.maxGuests ?? null,
+        isActive: dto.isActive ?? true,
+      }),
+    );
   }
 
   async updateRule(id: string, dto: UpdateRuleInput) {
     const rule = await this.ruleRepo.findOne({ where: { id } });
     if (!rule) throw new NotFoundException(`PricingRule ${id} not found`);
-    const update: Partial<{ seasonLabel: string; validFrom: string; validTo: string; pricePerNight: string; isActive: boolean }> = {};
+    const update: Partial<{
+      seasonLabel: string;
+      validFrom: string;
+      validTo: string;
+      pricePerNight: string;
+      isActive: boolean;
+    }> = {};
     if (dto.seasonLabel !== undefined) update.seasonLabel = dto.seasonLabel;
-    if (dto.validFrom   !== undefined) update.validFrom   = dto.validFrom;
-    if (dto.validTo     !== undefined) update.validTo     = dto.validTo;
-    if (dto.pricePerNight !== undefined) update.pricePerNight = String(dto.pricePerNight);
-    if (dto.isActive    !== undefined) update.isActive    = dto.isActive;
+    if (dto.validFrom !== undefined) update.validFrom = dto.validFrom;
+    if (dto.validTo !== undefined) update.validTo = dto.validTo;
+    if (dto.pricePerNight !== undefined)
+      update.pricePerNight = String(dto.pricePerNight);
+    if (dto.isActive !== undefined) update.isActive = dto.isActive;
     await this.ruleRepo.update(id, update);
-    return this.ruleRepo.findOne({ where: { id }, relations: ['accommodationType'] });
+    return this.ruleRepo.findOne({
+      where: { id },
+      relations: ['accommodationType'],
+    });
   }
 
   async remove(id: string) {

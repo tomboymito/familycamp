@@ -1,5 +1,12 @@
 import {
-  Body, Controller, Get, HttpCode, Post, Query, Req, UseGuards,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
@@ -7,12 +14,12 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { WebhooksService } from './webhooks.service';
 import type { OtaBookingInput } from './webhooks.service';
 
-/** Public webhook endpoints — no JWT (called by OTA platforms) */
+/** Публичные webhook-эндпоинты — без JWT (вызываются OTA-площадками) */
 @Controller('webhook')
 export class WebhooksPublicController {
   constructor(private readonly svc: WebhooksService) {}
 
-  /** Booking.com — sends XML (OTA_HotelResNotifRQ) */
+  /** Booking.com — отправляет XML (OTA_HotelResNotifRQ) */
   @Post('booking-com')
   @HttpCode(200)
   async bookingCom(@Req() req: RawBodyRequest<Request>) {
@@ -20,14 +27,14 @@ export class WebhooksPublicController {
     return this.svc.handleBookingCom(xml);
   }
 
-  /** Авито Путешествия — sends JSON */
+  /** Авито Путешествия — отправляет JSON */
   @Post('avito')
   @HttpCode(200)
-  avito(@Body() body: Record<string, unknown>, @Req() req: Request) {
+  avito(@Body() body: Record<string, unknown>) {
     return this.svc.handleAvito(body, JSON.stringify(body));
   }
 
-  /** Generic — normalized JSON, usable from any service or manual testing */
+  /** Generic — нормализованный JSON, подходит для любых интеграций и ручных тестов */
   @Post('generic')
   @HttpCode(200)
   generic(@Body() body: OtaBookingInput) {
@@ -35,7 +42,7 @@ export class WebhooksPublicController {
   }
 }
 
-/** Admin endpoints — viewing logs and manual conflict check */
+/** Админские эндпоинты — просмотр логов и ручная проверка конфликтов */
 @Controller('admin/webhooks')
 @UseGuards(JwtAuthGuard)
 export class WebhooksAdminController {
@@ -47,7 +54,9 @@ export class WebhooksAdminController {
   }
 
   @Post('check-conflict')
-  checkConflict(@Body() body: { placeId: string; checkIn: string; checkOut: string }) {
+  checkConflict(
+    @Body() body: { placeId: string; checkIn: string; checkOut: string },
+  ) {
     return this.svc.checkConflict(body.placeId, body.checkIn, body.checkOut);
   }
 }

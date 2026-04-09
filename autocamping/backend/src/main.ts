@@ -6,6 +6,8 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  const apiPrefix = process.env.API_PREFIX ?? 'api/v1';
+  const docsPath = `${apiPrefix}/docs`;
 
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
@@ -23,15 +25,21 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       process.env.PUBLIC_SITE_URL ?? 'http://localhost:3000',
-      process.env.ADMIN_URL ?? 'http://localhost:3002',
+      process.env.ADMIN_URL ?? 'http://localhost:5173',
       'http://localhost',
       'http://localhost:80',
+      'http://localhost:3002',
+      'http://localhost:4173',
+      'http://localhost:5173',
+      'http://127.0.0.1:3002',
+      'http://127.0.0.1:4173',
+      'http://127.0.0.1:5173',
     ],
     credentials: true,
   });
 
   // ── Global prefix ─────────────────────────────────────────────────────────
-  app.setGlobalPrefix('api/v1', {
+  app.setGlobalPrefix(apiPrefix, {
     exclude: ['/health'],
   });
 
@@ -71,11 +79,11 @@ async function bootstrap() {
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document, {
+    SwaggerModule.setup(docsPath, app, document, {
       swaggerOptions: { persistAuthorization: true },
     });
 
-    logger.log('Swagger docs available at /api/docs');
+    logger.log(`Swagger docs available at /${docsPath}`);
   }
 
   // ── Graceful shutdown ─────────────────────────────────────────────────────
